@@ -1,5 +1,4 @@
 <a href="http://www.weft.io">
-<img src="http://www.weft.io/prod-assets/weftHorizonLogoTrans-08df1aeb53f624b6d89986fd03628f7b258ae6df90e41bb645dde4ceb5c8b724.png" width="125"/></a>
 
 [![Clojars Project](https://clojars.org/io.weft/gregor/latest-version.svg)](https://clojars.org/io.weft/gregor)
 
@@ -97,5 +96,3 @@ List existing topics:
 ``` clojure
 (topics {:connection-string "localhost:2181"})
 ```
-
-
