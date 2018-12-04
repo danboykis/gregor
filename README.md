@@ -1,20 +1,22 @@
-<a href="http://www.weft.io">
+# Gregor
+
+Lightweight Clojure wrapper functions for [Apache Kafka](http://kafka.apache.org/) Consumer + Producer APIs.
+
+```clojure
+ :dependencies [[org.clojure/clojure "1.9.0"]
+                [org.apache.kafka/kafka_2.12 "2.0.0"]]
+
+```
 
 [![Clojars Project](https://clojars.org/io.weft/gregor/latest-version.svg)](https://clojars.org/io.weft/gregor)
 
-[**API**](http://weftio.github.io/gregor/) | [**CHANGELOG**](https://github.com/weftio/gregor/blob/master/CHANGELOG.md)
-
-# Gregor
-
-Lightweight Clojure bindings for [Apache Kafka](http://kafka.apache.org/) `0.9.X` and up.
-
-Currently targetting Kafka `0.10.0.1`.
+[**API**](http://ccann.github.io/gregor/) | [**CHANGELOG**](https://github.com/ccann/gregor/blob/master/CHANGELOG.md)
 
 Gregor wraps most of the Java API for the Kafka [Producer](http://kafka.apache.org/0100/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html) and [New Consumer](http://kafka.apache.org/0100/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html) and is almost feature complete as of `0.2.0`. The intent of this project is to stay very close to the Kafka API instead of adding more advanced features.
 
 ## Example
 
-Here's an example of at-least-once processing (using the excellent [`mount`](https://github.com/tolitius/mount)):
+Here's an example of at-least-once processing (using [`mount`](https://github.com/tolitius/mount)):
 
 ```clojure
 (ns gregor-sample-app.core
@@ -77,7 +79,7 @@ Create a topic:
 ```clojure
 (create-topic {:connection-string "localhost:2181"} "some-topic" {})
 ```
-That empty map can be used to specify configuration for number of topic partitions, replication factor, 
+That empty map can be used to specify configuration for number of topic partitions, replication factor,
 
 Delete a topic:
 

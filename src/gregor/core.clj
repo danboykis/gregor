@@ -13,7 +13,6 @@
   (:require [clojure.set :as set]
             [clojure.string :as str]))
 
-
 (def ^:no-doc str-deserializer "org.apache.kafka.common.serialization.StringDeserializer")
 (def ^:no-doc str-serializer "org.apache.kafka.common.serialization.StringSerializer")
 (def ^:no-doc byte-array-deserializer "org.apache.kafka.common.serialization.ByteArrayDeserializer")
@@ -70,28 +69,30 @@
 
 (defn consumer-record->map
   [^ConsumerRecord record]
-  {:value     (.value record)
-   :key       (.key record)
-   :partition (.partition record)
-   :topic     (.topic record)
-   :offset    (.offset record)})
+  {:value          (.value record)
+   :key            (.key record)
+   :partition      (.partition record)
+   :topic          (.topic record)
+   :offset         (.offset record)
+   :timestamp      (.timestamp record)
+   :timestamp-type (.toString (.timestampType record))})
 
-(defprotocol Closeable 
+(defprotocol Closeable
   "Provides two ways to close things: a default one with 'close [thing]'
    and the one with the specified timeout."
   (close [this]
-         [this timeout]))
+    [this timeout]))
 
 (extend-protocol Closeable
   KafkaProducer
-    (close ([p] (.close p))
-           ([p timeout]
-            ;; Tries to close the producer cleanly within the specified timeout.
-            ;; If the close does not complete within the timeout, fail any pending send
-            ;; requests and force close the producer
-            (.close p timeout TimeUnit/SECONDS)))
+  (close ([p] (.close p))
+    ([p timeout]
+     ;; Tries to close the producer cleanly within the specified timeout.
+     ;; If the close does not complete within the timeout, fail any pending send
+     ;; requests and force close the producer
+     (.close p timeout TimeUnit/SECONDS)))
   KafkaConsumer
-    (close ([c] (.close c))))
+  (close ([c] (.close c))))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Kafka Consumer ;;
@@ -110,14 +111,13 @@
   [^Consumer consumer]
   (set (.assignment consumer)))
 
-
 (defn commit-offsets-async!
- "Commit offsets returned by the last poll for all subscribed topics and partitions,
+  "Commit offsets returned by the last poll for all subscribed topics and partitions,
   or manually specify offsets to commit.
 
   This is an asynchronous call and will not block. Any errors encountered are either
   passed to the callback (if provided) or discarded.
-  
+
   offsets (optional) - commit the specified offsets for the specified list of topics
   and partitions to Kafka. A seq of offset maps, as below:
 
@@ -131,7 +131,7 @@
         :partition 0
         :offset 17
         :metadata \"Dude, that's so meta.\"}
-  
+
   The committed offset should be the next message your application will consume,
   i.e. lastProcessedMessageOffset + 1.
   "
@@ -326,7 +326,6 @@
        (subscribe c topics))
      c)))
 
-
 ;;;;;;;;;;;;;;;;;;;;
 ;; Kafka Producer ;;
 ;;;;;;;;;;;;;;;;;;;;
@@ -345,7 +344,9 @@
   ([^String topic key value]
    (ProducerRecord. topic key value))
   ([^String topic ^Integer partition key value]
-   (ProducerRecord. topic partition key value)))
+   (ProducerRecord. topic (int partition) key value))
+  ([^String topic ^Integer partition ^Long timestamp key value]
+   (ProducerRecord. topic (int partition) (long timestamp) key value)))
 
 (defn- send-record
   [^Producer producer ^ProducerRecord record & [callback]]
@@ -354,9 +355,10 @@
            (reify Callback
              (onCompletion [this metadata ex]
                (try
-                 (callback {:offset (.offset metadata)
-                            :partition (.partition metadata)
-                            :topic (.topic metadata)}
+                 (callback (when metadata
+                             {:offset    (.offset metadata)
+                              :partition (.partition metadata)
+                              :topic     (.topic metadata)})
                            ex)
                  (catch Exception _ nil)))))
     (.send producer record)))
@@ -369,7 +371,9 @@
   ([^Producer producer ^String topic key value]
    (send-record producer (->producer-record topic key value)))
   ([^Producer producer ^String topic ^Integer partition key value]
-   (send-record producer (->producer-record topic partition key value))))
+   (send-record producer (->producer-record topic partition key value)))
+  ([^Producer producer ^String topic ^Integer partition ^Long timestamp key value]
+   (send-record producer (->producer-record topic partition timestamp key value))))
 
 (defn send-then
   "Asynchronously send a record to a topic, providing at least a topic and value, and
@@ -386,7 +390,9 @@
   ([^Producer producer ^String topic key value callback]
    (send-record producer (->producer-record topic key value) callback))
   ([^Producer producer ^String topic ^Integer partition key value callback]
-   (send-record producer (->producer-record topic partition key value) callback)))
+   (send-record producer (->producer-record topic (int partition) key value) callback))
+  ([^Producer producer ^String topic ^Integer partition ^Long timestamp key value callback]
+   (send-record producer (->producer-record topic (int partition) (long timestamp) key value) callback)))
 
 (defn producer
   "Return a KafkaProducer.
@@ -399,7 +405,7 @@
     config: an optional map of str to str containing additional producer
             configuration. More info on optional config is available here:
             http://kafka.apache.org/documentation.html#producerconfigs
-            
+
    The StringSerializer class is the default for both key.serializer and value.serializer"
   ^KafkaProducer
   ([servers] (producer servers {}))
@@ -470,7 +476,7 @@
 (def rack-aware-modes
   {:disabled (kafka.admin.RackAwareMode$Disabled$.)
    :enforced (kafka.admin.RackAwareMode$Enforced$.)
-   :safe (kafka.admin.RackAwareMode$Safe$.)})
+   :safe     (kafka.admin.RackAwareMode$Safe$.)})
 
 (defn- rack-aware-mode-constant
   "Convert a keyword name for a RackAwareMode into the appropriate constant
@@ -492,7 +498,7 @@
                with-zookeeper.
     topic: The name of the topic to create.
     An unnamed configuration map. Valid keys are as follows:
-  
+
       :partitions         (optional) The number of ways to partition the topic.
                                      Defaults to 1.
       :replication-factor (optional) The replication factor for the topic.
